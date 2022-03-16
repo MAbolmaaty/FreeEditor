@@ -54,15 +54,18 @@
 
     <TextView
         android:id="@+id/videoName"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/_8sdp"
         android:layout_marginEnd="@dimen/_8sdp"
         android:textColor="@android:color/white"
         android:textSize="@dimen/_12sdp"
+        android:maxLines="2"
         app:layout_constraintBottom_toBottomOf="@+id/videoThumbnailCardView"
         app:layout_constraintStart_toEndOf="@+id/videoThumbnailCardView"
         app:layout_constraintTop_toTopOf="@+id/videoThumbnailCardView"
+        app:layout_constraintEnd_toStartOf="@+id/ic_videoRemove"
+        app:layout_constraintHorizontal_chainStyle="spread"
         tools:text="video-07" />
 
     <TextView

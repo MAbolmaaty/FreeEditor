@@ -352,7 +352,7 @@ public class MergeFragment extends Fragment {
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                intent.setType("video/mp4");
+                intent.setType("video/*");
                 startActivityForResult(intent, OPEN_MEDIA_PICKER);
             }
         });
@@ -518,9 +518,9 @@ public class MergeFragment extends Fragment {
                     @Override
                     public void onVideoRemoveClickListener(int videoClicked) {
                         if (mListVideos.get(videoClicked).getVideoMode() ==
-                                MergeVideoModel.Mode.PLAY){
+                                MergeVideoModel.Mode.PLAY) {
                             mListVideos.remove(videoClicked);
-                            if (mListVideos.size() == 1){
+                            if (mListVideos.size() == 1) {
                                 mMergedVideosAdapter.clearVideosList();
                                 mMainViewPagerSwipingViewModel.setMainViewPagerSwiping(true);
                                 mLastClickedVideo = -1;
@@ -537,7 +537,7 @@ public class MergeFragment extends Fragment {
                                     getVideoName());
                         } else {
                             mListVideos.remove(videoClicked);
-                            if (mListVideos.size() == 1){
+                            if (mListVideos.size() == 1) {
                                 mMergedVideosAdapter.clearVideosList();
                                 mMainViewPagerSwipingViewModel.setMainViewPagerSwiping(true);
                                 mLastClickedVideo = -1;
@@ -559,7 +559,7 @@ public class MergeFragment extends Fragment {
                             @Override
                             public void onButtonMergeClickListener() {
                                 if (mListVideos.get(VIDEOS_LIST_FIRST_POSITION).getType() ==
-                                MERGE_PROCESS){
+                                        MERGE_PROCESS) {
                                     if (mToast != null)
                                         mToast.cancel();
 
@@ -569,14 +569,18 @@ public class MergeFragment extends Fragment {
                                     mToast.show();
                                 } else {
                                     //changeVideoResolution();
-                                    mergeVideos();
+                                    try {
+                                        mergeVideos();
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
                         }, new MergedVideosAdapter.ButtonGalleryClickListener() {
                     @Override
                     public void onButtonGalleryClickListener() {
                         if (mListVideos.get(VIDEOS_LIST_FIRST_POSITION).getType() ==
-                                MERGE_PROCESS){
+                                MERGE_PROCESS) {
                             if (mToast != null)
                                 mToast.cancel();
 
@@ -588,7 +592,7 @@ public class MergeFragment extends Fragment {
                             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                             intent.addCategory(Intent.CATEGORY_OPENABLE);
                             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                            intent.setType("video/mp4");
+                            intent.setType("video/*");
                             startActivityForResult(intent, OPEN_MEDIA_PICKER);
                         }
                     }
@@ -838,7 +842,7 @@ public class MergeFragment extends Fragment {
         });
     }
 
-    private void changeVideoResolution(){
+    private void changeVideoResolution() {
         File storageFile = new File(Environment.getExternalStorageDirectory(),
                 "FreeCut/merge/");
         storageFile.mkdirs();
@@ -872,7 +876,7 @@ public class MergeFragment extends Fragment {
         });
     }
 
-    private void mergeVideos() {
+    private void mergeVideos() throws JSONException {
         File storageFile = new File(Environment.getExternalStorageDirectory(),
                 "FreeCut/merge/");
         storageFile.mkdirs();
@@ -887,7 +891,58 @@ public class MergeFragment extends Fragment {
             j++;
         } while (mergedFile.isFile());
 
+        MediaInformation infoOfFirstVideo =
+                FFprobe.getMediaInformation(mListVideos.get(0).getVideoFile().getAbsolutePath());
+        int heightOfFirstVideo = Integer.parseInt(infoOfFirstVideo.getAllProperties()
+                .getJSONArray("streams")
+                .getJSONObject(0).getString("height"));
+        int widthOfFirstVideo = Integer.parseInt(infoOfFirstVideo.getAllProperties()
+                .getJSONArray("streams")
+                .getJSONObject(0).getString("width"));
+        int fpsOfFirstVideo = Integer.parseInt(infoOfFirstVideo.getBitrate()) / 10000;
 
+        boolean differentResolutions = false;
+        MediaInformation videoInfo;
+        int videoHeight;
+        for (int i = 0; i < mListVideos.size() - 1; i++) {
+            videoInfo = FFprobe.getMediaInformation(mListVideos.get(i).getVideoFile().getAbsolutePath());
+            videoHeight = Integer.parseInt(videoInfo.getAllProperties()
+                    .getJSONArray("streams")
+                    .getJSONObject(0).getString("height"));
+            if(videoHeight != heightOfFirstVideo){
+                differentResolutions = true;
+                break;
+            }
+        }
+
+        int minimumVideoHeight = heightOfFirstVideo;
+        int minimumVideoWidth = widthOfFirstVideo;
+        int minimumFps = fpsOfFirstVideo;
+
+        if(differentResolutions){
+            for (int i = 0; i < mListVideos.size() - 1; i++) {
+                videoInfo = FFprobe.getMediaInformation(mListVideos.get(i).getVideoFile().getAbsolutePath());
+                videoHeight = Integer.parseInt(videoInfo.getAllProperties()
+                        .getJSONArray("streams")
+                        .getJSONObject(0).getString("height"));
+                if(videoHeight < minimumVideoHeight){
+                    minimumVideoHeight = videoHeight;
+                    minimumVideoWidth = Integer.parseInt(videoInfo.getAllProperties()
+                            .getJSONArray("streams")
+                            .getJSONObject(0).getString("width"));
+                    minimumFps = Integer.parseInt(videoInfo.getBitrate()) / 10000;
+                }
+            }
+
+            File convertedStorageFile = new File(Environment.getExternalStorageDirectory(),
+                    "FreeCut/merge/converted");
+            convertedStorageFile.mkdirs();
+            convertVideo(0,minimumVideoHeight, minimumVideoWidth, minimumFps,
+                    convertedStorageFile);
+        }
+    }
+
+    private void mergingVideos(){
         ArrayList<String> listMergeCommands = new ArrayList<>();
         String filter = "";
         for (int i = 0; i < mListVideos.size() - 1; i++) {
@@ -930,6 +985,17 @@ public class MergeFragment extends Fragment {
             }
         }
 
+        FFmpeg.executeAsync(mergeCommand, new ExecuteCallback() {
+            @Override
+            public void apply(long executionId, int returnCode) {
+                if(returnCode == RETURN_CODE_SUCCESS){
+                    Log.d(TAG, "Command Success");
+                } else {
+                    Log.d(TAG, "Command Failed");
+                }
+            }
+        });
+
         mFFmpegMergeProcessId = FFmpeg.executeAsync(mergeCommand, new ExecuteCallback() {
             @Override
             public void apply(long executionId, int returnCode) {
@@ -969,6 +1035,61 @@ public class MergeFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void convertVideo(int counter, int minHeight, int minWidth,
+                              int minFps, File parent) {
+        Log.d(TAG, "convertVideo Started");
+        if(counter == mListVideos.size() - 1){
+            mergingVideos();
+            return;
+        }
+        File video = mListVideos.get(counter).getVideoFile();
+        MediaInformation currentVideoInfo =
+                FFprobe.getMediaInformation(video.getAbsolutePath());
+        int videoHeight = 0;
+        try {
+            videoHeight = Integer.parseInt(currentVideoInfo.getAllProperties()
+                    .getJSONArray("streams")
+                    .getJSONObject(0).getString("height"));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        final int nextVideo = counter + 1;
+        if (videoHeight != minHeight){
+            Log.d(TAG, "videoHeight != minHeight");
+            File convertedFile = new File(parent,
+                    video.getName()+"-converted" + counter + ".mp4");
+            final String[] convert = {
+                    "-i", video.getAbsolutePath(),
+                    "-c:a", "aac", "-vcodec", "libx264", "-s",
+                    minWidth+"X"+minHeight,
+                    "-r", String.valueOf(minFps), "-strict", "experimental",
+                    convertedFile.getAbsolutePath(),
+            };
+
+            FFmpeg.executeAsync(convert, new ExecuteCallback() {
+                @Override
+                public void apply(long executionId, int returnCode) {
+                    Log.d(TAG, "convertVideo Start");
+                    if(returnCode == RETURN_CODE_SUCCESS){
+                        Log.d(TAG, "convertVideo Success");
+                        String fileName = mListVideos.get(counter).getVideoName();
+                        mListVideos.remove(counter);
+                        mListVideos.add(counter, new MergeVideoModel(convertedFile,
+                                fileName,
+                                getVideoDuration(convertedFile), MergeVideoModel.Mode.PAUSE,
+                                MERGING));
+                        convertVideo(nextVideo, minHeight, minWidth, minFps, parent);
+                    } else{
+                        Log.d(TAG, "convertVideo Failed");
+                    }
+                }
+            });
+        } else {
+            Log.d(TAG, "videoHeight == minHeight");
+            convertVideo(nextVideo, minHeight, minWidth, minFps, parent);
+        }
     }
 
     private String getPath(final Context context, final Uri uri) {
