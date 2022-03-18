@@ -29,11 +29,12 @@
     <string name="enter_seconds">Enter number of seconds</string>
     <string name="delete_all">Delete All</string>
     <string name="import_videos">Import</string>
-    <string name="about">Is an application that does the following:
-cut video in two ways:
-- Fast speed and accuracy ratio will be 70 per cent of the forgotten video output
-- The slow way takes time sometimes is equivalent to the length of the video or less, but the proportion of accuracy in the outputs be one hundred percent
-- You can try the quick shredding first and if the results are not accurate you can choose the second way Embed videos in filter mode: It merges any type of video regardless of the different formats and takes a total length of time to match the total time of the video clips</string>
+    <string name="about">Free Editor app does the following,
+        trim videos in two ways, speed trim with low time accuracy and
+        the slower way that takes time that nearly equivalent to the time of the uploaded video,
+        but at the end you will get time-accurate trimmed videos (Hopefully!).
+        We recommend trying the speed trim at first then if the results are not accurate enough for
+        you, try the accurate option (trim),It merges any type of video regardless of the different formats and takes a total length of time to match the total time of the video clips</string>
     <string name="app_description">About app</string>
     <string name="web_site">Web Site</string>
     <string name="hint_copyrights">All rights are reserved for Force Touches</string>
