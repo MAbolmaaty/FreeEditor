@@ -3,16 +3,26 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/background_button.xml" value="0.1" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/background_item.xml" value="0.1" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/background_rectangle_multi_colors.xml" value="0.188" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/background_upload.xml" value="0.1" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/button_background.xml" value="0.1" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/ic_free_editor.xml" value="0.183" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/ic_launcher.xml" value="0.183" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/ic_new_logo.xml" value="0.1" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/row_background.xml" value="0.1" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/drawable/splash_background.xml" value="0.183" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/layout/dialog_language_change.xml" value="0.15896739130434784" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/layout/fragment_about.xml" value="0.15896739130434784" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/layout/fragment_trim.xml" value="0.14945652173913043" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/layout/list_item_merge_last.xml" value="0.15896739130434784" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/layout/list_item_merge_process.xml" value="0.15896739130434784" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/layout/list_item_merged_video.xml" value="0.15896739130434784" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/layout/list_item_merging_video.xml" value="0.15896739130434784" />
+        <entry key="..\:/Em/FreeCut/app/src/main/res/layout/list_item_trimmed_video.xml" value="0.1" />
         <entry key="..\:/Em/FreeCut/app/src/main/res/menu/bottom_nav_items.xml" value="0.209375" />
+        <entry key="..\:/Em/FreeEditor/app/src/main/res/layout/list_item_video.xml" value="0.1" />
         <entry key="..\:/MU/FreeCut/app/src/main/res/drawable-hdpi/ic_launcher_foreground.xml" value="0.2657407407407407" />
         <entry key="..\:/MU/FreeCut/app/src/main/res/drawable-v24/ic_launcher_foreground.xml" value="0.2657407407407407" />
         <entry key="..\:/MU/FreeCut/app/src/main/res/drawable/background_bottom_navigation_item.xml" value="0.2712820512820513" />

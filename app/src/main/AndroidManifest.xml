@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="force.freecut.freecut">
+    package="com.emupapps.free_editor">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:name=".helper.FreeCutApp"
+        android:name="com.emupapps.free_editor.helper.FreeCutApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_free_cut"
         android:roundIcon="@mipmap/ic_launcher_free_cut"
@@ -20,13 +20,7 @@
         tools:replace="android:supportsRtl"
         android:requestLegacyExternalStorage="true">
 
-        <activity
-            android:name=".ui.activities.SplashActivity"
-            android:screenOrientation="portrait">
-
-        </activity>
-
-        <activity android:name=".ui.activities.MainActivity"
+        <activity android:name="com.emupapps.free_editor.ui.activities.MainActivity"
             android:screenOrientation="portrait"
             android:theme="@style/SplashTheme"
             >
@@ -39,12 +33,12 @@
         </activity>
 
         <activity
-            android:name=".ui.activities.PermissionActivity"
+            android:name="com.emupapps.free_editor.ui.activities.PermissionActivity"
             android:screenOrientation="portrait" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="force.freecut.freecut.provider"
+            android:authorities="com.emupapps.free_editor.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

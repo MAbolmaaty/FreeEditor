@@ -5,28 +5,13 @@
     <color name="colorAccent">#01a6fe</color>
     <color name="colorAccent2">#0188FE</color>
     <color name="black1">#60000000</color>
-    <color name="black2">#30000000</color>
     <color name="black3">#00000000</color>
     <color name="button">#eca820</color>
-    <color name="button2">#eca518</color>
     <color name="white">#ffffff</color>
     <color name="app_background">#263346</color>
-    <color name="upload_background">#af959799</color>
-    <color name="bg1">#181921</color>
-    <color name="bg2">#1C1F29</color>
-    <color name="bg3">#262A3A</color>
-    <color name="lighter_gray">#ddd</color>
-    <color name="darker_gray">#aaa</color>
-    <color name="edit">#71efefef</color>
-    <color name="shadow">#d6161d26</color>
-    <color name="shadow_top">#263346</color>
-
     <color name="view_color">#cccccc</color>
-    <color name="black_trans_dark">#CC000000</color>
     <color name="orange">#eca820</color>
     <color name="grey">#606060</color>
     <color name="lightGrey">#808080</color>
     <color name="darkBlue">#263346</color>
-    <color name="blue">#0000EE</color>
-
 </resources>

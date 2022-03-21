@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 29
     defaultConfig {
-        applicationId "force.freecut.freecut"
+        applicationId "com.emupapps.free_editor"
         minSdkVersion 21
         targetSdkVersion 29
         versionCode 14
