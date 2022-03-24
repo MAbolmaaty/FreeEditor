@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 31
     defaultConfig {
         applicationId "com.emupapps.free_editor"
-        minSdkVersion 21
-        targetSdkVersion 29
-        versionCode 14
-        versionName "12.1"
+        minSdkVersion 24
+        targetSdkVersion 31
+        versionCode 1
+        versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -36,14 +36,10 @@ dependencies {
     implementation 'com.google.android.material:material:1.2.1'
     implementation 'androidx.appcompat:appcompat:1.2.0'
 
-    // implementation project(':FFmpegAndroid')
-    implementation 'com.google.code.gson:gson:2.8.5'
-
     implementation 'com.erikagtierrez.multiple_media_picker:multiple-media-picker:1.0.3'
 
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation group: 'commons-lang', name: 'commons-lang', version: '2.6'
-    implementation 'com.google.android.gms:play-services-ads:11.0.0'
 
     implementation 'bg.devlabs.fullscreenvideoview:library:0.0.9'
 
@@ -61,8 +57,7 @@ dependencies {
     // ViewPager2
     implementation "androidx.viewpager2:viewpager2:1.0.0"
 
-    // MobileFFmpeg
-    implementation 'com.arthenica:mobile-ffmpeg-full-gpl:4.4.LTS'
+    implementation 'com.arthenica:ffmpeg-kit-full-gpl:4.5.1'
 
     // ShimmerRecyclerView
     implementation 'com.facebook.shimmer:shimmer:0.5.0'

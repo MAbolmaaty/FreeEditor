@@ -34,8 +34,6 @@ public class AboutFragment extends Fragment {
 
     private View mChangeLanguage;
     private TextView mCurrentLanguage;
-    private TextView mWebsite;
-    private TextView mAppleStore;
     private TextView mGooglePlay;
     private MainViewPagerSwipingViewModel mMainViewPagerSwipingViewModel;
 
@@ -77,8 +75,6 @@ public class AboutFragment extends Fragment {
         mMainViewPagerSwipingViewModel = ViewModelProviders.of(getActivity())
                 .get(MainViewPagerSwipingViewModel.class);
         mCurrentLanguage = view.findViewById(R.id.text_language);
-//        mWebsite = view.findViewById(R.id.web_link);
-//        mAppleStore = view.findViewById(R.id.apple_store);
         mGooglePlay = view.findViewById(R.id.google_store);
         String language = SharedPrefUtil.getInstance(getActivity()).read(LOCALE, Locale.getDefault().getLanguage());
         if (language.equals("ar")){
@@ -117,27 +113,6 @@ public class AboutFragment extends Fragment {
 //                        getActivity().recreate();
 //                    }
 //                });
-//            }
-//        });
-
-//        mWebsite.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                ShareUtils.OpenLink(getActivity(),"https://www.forcetouches.com/");
-//            }
-//        });
-
-//        mAppleStore.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                ShareUtils.OpenLink(getActivity(),"https://itunes.apple.com/sa/developer/ibrahim-alomar/id1120890963?mt=8");
-//            }
-//        });
-
-//        mGooglePlay.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                ShareUtils.OpenLink(getActivity(),"https://play.google.com/store/apps/developer?id=Force+Touches");
 //            }
 //        });
 

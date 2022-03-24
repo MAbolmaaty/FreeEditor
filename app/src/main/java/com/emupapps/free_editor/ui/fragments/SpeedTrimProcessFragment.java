@@ -1,6 +1,5 @@
 package com.emupapps.free_editor.ui.fragments;
 
-import static com.arthenica.mobileffmpeg.Config.RETURN_CODE_SUCCESS;
 import static com.emupapps.free_editor.utils.Constants.MAIN_VIDEO;
 import static com.emupapps.free_editor.utils.Constants.SEGMENT_TIME;
 import static com.emupapps.free_editor.utils.Constants.STORAGE_DIRECTORY;
@@ -32,8 +31,13 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.arthenica.mobileffmpeg.ExecuteCallback;
-import com.arthenica.mobileffmpeg.FFmpeg;
+import com.arthenica.ffmpegkit.FFmpegKit;
+import com.arthenica.ffmpegkit.FFmpegSession;
+import com.arthenica.ffmpegkit.FFmpegSessionCompleteCallback;
+import com.arthenica.ffmpegkit.LogCallback;
+import com.arthenica.ffmpegkit.ReturnCode;
+import com.arthenica.ffmpegkit.Statistics;
+import com.arthenica.ffmpegkit.StatisticsCallback;
 import com.todkars.shimmer.ShimmerRecyclerView;
 
 import java.io.File;
@@ -71,8 +75,8 @@ public class SpeedTrimProcessFragment extends Fragment {
     private boolean mBlockSeekBar = true;
     private boolean mVideoMuted = false;
     private MediaPlayer mMediaPlayer;
-    private long mFFmpegSpeedTrimProcessId;
-    private long mFFmpegSeekToZeroProcessId;
+    private FFmpegSession mFFmpegSpeedTrim;
+    private FFmpegSession mFFmpegSeekToZero;
     private int mLastClickedVideo;
     private TrimVideoModel[] mTrimVideoModels;
     private boolean mPaused;
@@ -283,8 +287,12 @@ public class SpeedTrimProcessFragment extends Fragment {
 
     @Override
     public void onDestroy() {
-        FFmpeg.cancel(mFFmpegSpeedTrimProcessId);
-        FFmpeg.cancel(mFFmpegSeekToZeroProcessId);
+        if (mFFmpegSpeedTrim != null) {
+            mFFmpegSpeedTrim.cancel();
+        }
+        if (mFFmpegSeekToZero != null) {
+            mFFmpegSeekToZero.cancel();
+        }
         super.onDestroy();
     }
 
@@ -304,24 +312,32 @@ public class SpeedTrimProcessFragment extends Fragment {
         File initialFile =
                 new File(initialStorageDirectory, "%02d.mp4");
 
-        final String[] speedTrim = {
-                "-i", videoPath,
-                "-codec:a", "copy",
-                "-f", "segment", "-segment_time", String.valueOf(segmentTime),
-                "-codec:v", "copy",
-                "-map", "0",
-                initialFile.getAbsolutePath()};
+        final String speedTrim =
+                "-i '" + videoPath +
+                "' -codec:a copy -f segment -segment_time " + segmentTime + " -codec:v copy" +
+                " -map 0 '" + initialFile.getAbsolutePath() + "'";
 
-        mFFmpegSpeedTrimProcessId = FFmpeg.executeAsync(speedTrim, new ExecuteCallback() {
+        Log.d(TAG, "speed trim started");
+        mFFmpegSpeedTrim = FFmpegKit.executeAsync(speedTrim, new FFmpegSessionCompleteCallback() {
             @Override
-            public void apply(long executionId, int returnCode) {
-                if (returnCode == RETURN_CODE_SUCCESS) {
-                    Log.d(TAG, "speed trim success");
+            public void apply(FFmpegSession session) {
+                if (ReturnCode.isSuccess(session.getReturnCode())) {
+                    Log.d(TAG, "speed trim succeed");
                     seekVideoToZero(initialStorageDirectory, new File(storageDirectory),
                             1);
                 } else {
-                    Log.d(TAG, "speed trim fail");
+                    Log.d(TAG, "speed trim failed");
                 }
+            }
+        }, new LogCallback() {
+            @Override
+            public void apply(com.arthenica.ffmpegkit.Log log) {
+                Log.d(TAG, "Message Speed Trim : " + log.getMessage());
+            }
+        }, new StatisticsCallback() {
+            @Override
+            public void apply(Statistics statistics) {
+
             }
         });
     }
@@ -373,11 +389,16 @@ public class SpeedTrimProcessFragment extends Fragment {
                 }
             });
 
-            mShimmerRecyclerView.hideShimmer();
-            mOutputVideos.setVisibility(View.VISIBLE);
-            mShimmerRecyclerView.setVisibility(View.GONE);
-            mOutputVideos.setAdapter(mTrimmedVideosAdapter);
-            mTrimmingComplete = true;
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mShimmerRecyclerView.hideShimmer();
+                    mOutputVideos.setVisibility(View.VISIBLE);
+                    mShimmerRecyclerView.setVisibility(View.GONE);
+                    mOutputVideos.setAdapter(mTrimmedVideosAdapter);
+                    mTrimmingComplete = true;
+                }
+            });
             return;
         }
 
@@ -386,26 +407,35 @@ public class SpeedTrimProcessFragment extends Fragment {
         File file =
                 new File(destinationStorageDirectory, name + ".mp4");
 
-        final String[] seekToZero = {
-                "-ss", "0",
-                "-i", initialStorageDirectory.listFiles()[0].getAbsolutePath(),
-                "-c:v", "copy",
-                "-c:a", "copy",
-                file.getAbsolutePath()};
+        final String seekToZero =
+                "-ss 0 -i '" + initialStorageDirectory.listFiles()[0].getAbsolutePath() +
+                "' -c:v copy -c:a copy '" + file.getAbsolutePath() + "'";
 
-        mFFmpegSeekToZeroProcessId = FFmpeg.executeAsync(seekToZero, new ExecuteCallback() {
-            @Override
-            public void apply(long executionId, int returnCode) {
-                if (returnCode == RETURN_CODE_SUCCESS) {
-                    Log.d(TAG, "seek to zero success");
-                    initialStorageDirectory.listFiles()[0].delete();
-                    seekVideoToZero(initialStorageDirectory, destinationStorageDirectory,
-                            counter+1);
-                } else {
-                    Log.d(TAG, "seek to zero failed");
-                }
-            }
-        });
+        Log.d(TAG, "seek to zero started");
+        mFFmpegSeekToZero = FFmpegKit.executeAsync(seekToZero,
+                new FFmpegSessionCompleteCallback() {
+                    @Override
+                    public void apply(FFmpegSession session) {
+                        if (ReturnCode.isSuccess(session.getReturnCode())) {
+                            Log.d(TAG, "seek to zero succeed");
+                            initialStorageDirectory.listFiles()[0].delete();
+                            seekVideoToZero(initialStorageDirectory, destinationStorageDirectory,
+                                    counter + 1);
+                        } else {
+                            Log.d(TAG, "seek to zero failed");
+                        }
+                    }
+                }, new LogCallback() {
+                    @Override
+                    public void apply(com.arthenica.ffmpegkit.Log log) {
+                        Log.d(TAG, "Message Seek To Zero : " + log.getMessage());
+                    }
+                }, new StatisticsCallback() {
+                    @Override
+                    public void apply(Statistics statistics) {
+
+                    }
+                });
     }
 
     private void controlVideo() {

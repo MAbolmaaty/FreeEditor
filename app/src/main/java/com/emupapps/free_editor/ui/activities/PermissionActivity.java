@@ -34,7 +34,6 @@ import static com.emupapps.free_editor.utils.Constants.LOCALE;
 public class PermissionActivity extends AppCompatActivity {
 
     Button perm;
-    String LANG_CURRENT;
 
     @Override
     protected void attachBaseContext(Context newBase) {

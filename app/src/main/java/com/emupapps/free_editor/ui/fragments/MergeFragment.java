@@ -1,7 +1,6 @@
 package com.emupapps.free_editor.ui.fragments;
 
 import static android.app.Activity.RESULT_OK;
-import static com.arthenica.mobileffmpeg.Config.RETURN_CODE_SUCCESS;
 import static com.emupapps.free_editor.adapters.MergedVideosAdapter.LAST_ITEM;
 import static com.emupapps.free_editor.adapters.MergedVideosAdapter.MERGED;
 import static com.emupapps.free_editor.adapters.MergedVideosAdapter.MERGE_PROCESS;
@@ -44,16 +43,20 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.arthenica.mobileffmpeg.Config;
-import com.arthenica.mobileffmpeg.ExecuteCallback;
-import com.arthenica.mobileffmpeg.FFmpeg;
-import com.arthenica.mobileffmpeg.FFprobe;
-import com.arthenica.mobileffmpeg.MediaInformation;
-import com.arthenica.mobileffmpeg.Statistics;
-import com.arthenica.mobileffmpeg.StatisticsCallback;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.MobileAds;
+import com.arthenica.ffmpegkit.FFmpegKit;
+import com.arthenica.ffmpegkit.FFmpegSession;
+import com.arthenica.ffmpegkit.FFmpegSessionCompleteCallback;
+import com.arthenica.ffmpegkit.FFprobeKit;
+import com.arthenica.ffmpegkit.LogCallback;
+import com.arthenica.ffmpegkit.MediaInformation;
+import com.arthenica.ffmpegkit.MediaInformationSession;
+import com.arthenica.ffmpegkit.ReturnCode;
+import com.arthenica.ffmpegkit.Statistics;
+import com.arthenica.ffmpegkit.StatisticsCallback;
+import com.emupapps.free_editor.Data.MergeVideoModel;
+import com.emupapps.free_editor.R;
+import com.emupapps.free_editor.adapters.MergedVideosAdapter;
+import com.emupapps.free_editor.view_models.MainViewPagerSwipingViewModel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -66,14 +69,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-
-import com.emupapps.free_editor.Data.MergeVideoModel;
-import com.emupapps.free_editor.Data.TinyDB;
-import com.emupapps.free_editor.R;
-import com.emupapps.free_editor.adapters.MergedVideosAdapter;
-import com.emupapps.free_editor.view_models.MainViewPagerSwipingViewModel;
-import com.emupapps.free_editor.view_models.MergeViewModel;
-import com.emupapps.free_editor.view_models.ToolbarViewModel;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -91,13 +86,6 @@ public class MergeFragment extends Fragment {
     private String mParam2;
 
     static final int OPEN_MEDIA_PICKER = 1;
-    TinyDB tinydb;
-    String mylink = "https://www.google.com/";
-    private MergeViewModel mMergeViewModel;
-    ImageView mBanner;
-    String saldo = "";
-
-    private ToolbarViewModel mToolbarViewModel;
     private MainViewPagerSwipingViewModel mMainViewPagerSwipingViewModel;
 
     private ImageView mIcVideo2;
@@ -127,7 +115,8 @@ public class MergeFragment extends Fragment {
     private File mergedFile;
     private Toast mToast;
     int mergedVideoFrames = 0;
-    private long mFFmpegMergeProcessId;
+    private FFmpegSession mFFmpegMergeSession;
+    private FFmpegSession mFFmpegConvertSession;
 
     private Runnable mUpdateVideoTimeRunnable = new Runnable() {
         @Override
@@ -233,7 +222,6 @@ public class MergeFragment extends Fragment {
 
         mMainViewPagerSwipingViewModel = ViewModelProviders.of(getActivity())
                 .get(MainViewPagerSwipingViewModel.class);
-        mBanner = view.findViewById(R.id.banner);
 
         mIcVideo2 = view.findViewById(R.id.icVideo2);
         mIcVideo = view.findViewById(R.id.icVideo);
@@ -251,16 +239,6 @@ public class MergeFragment extends Fragment {
 
         mListVideos = new ArrayList<>();
         mListVideosForMergeProcess = new ArrayList<>();
-        mMergeViewModel = ViewModelProviders.of(getActivity()).get(MergeViewModel.class);
-        mToolbarViewModel = ViewModelProviders.of(getActivity()).get(ToolbarViewModel.class);
-
-        MobileAds.initialize(getActivity(), "ca-app-pub-6503532425142366~2924525320");
-
-        AdView adView1 = view.findViewById(R.id.adView22);
-        AdRequest adRequest = new AdRequest.Builder().build();
-        adView1.loadAd(adRequest);
-
-        tinydb = new TinyDB(getActivity());
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext(),
                 RecyclerView.VERTICAL, false);
@@ -269,17 +247,6 @@ public class MergeFragment extends Fragment {
 
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(mSimpleCallback);
         itemTouchHelper.attachToRecyclerView(mRecyclerViewVideos);
-
-        mBanner.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                String url = mylink;
-                Intent i = new Intent(Intent.ACTION_VIEW);
-                i.setData(Uri.parse(url));
-                startActivity(i);
-            }
-        });
 
         mOpenGallery.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -457,8 +424,8 @@ public class MergeFragment extends Fragment {
                                 mMergedVideosAdapter.clearVideosList();
                                 mMainViewPagerSwipingViewModel.setMainViewPagerSwiping(true);
                                 mLastClickedVideo = -1;
-                                FFmpeg.cancel(mFFmpegMergeProcessId);
-                                Config.resetStatistics();
+                                if(mFFmpegMergeSession != null) { mFFmpegMergeSession.cancel(); }
+                                if(mFFmpegConvertSession != null) { mFFmpegConvertSession.cancel(); }
                                 showPickupVideos(true);
                                 showVideoView(false);
                                 return;
@@ -475,7 +442,8 @@ public class MergeFragment extends Fragment {
                                 mMergedVideosAdapter.clearVideosList();
                                 mMainViewPagerSwipingViewModel.setMainViewPagerSwiping(true);
                                 mLastClickedVideo = -1;
-                                FFmpeg.cancel(mFFmpegMergeProcessId);
+                                if(mFFmpegMergeSession != null) { mFFmpegMergeSession.cancel(); }
+                                if(mFFmpegConvertSession != null) { mFFmpegConvertSession.cancel(); }
                                 showPickupVideos(true);
                                 showVideoView(false);
                                 return;
@@ -504,7 +472,7 @@ public class MergeFragment extends Fragment {
                                 } else {
                                     //changeVideoResolution();
                                     try {
-                                       mergeVideos();
+                                        mergeVideos();
                                     } catch (JSONException e) {
                                         e.printStackTrace();
                                     }
@@ -536,8 +504,8 @@ public class MergeFragment extends Fragment {
                         mMergedVideosAdapter.clearVideosList();
                         mMainViewPagerSwipingViewModel.setMainViewPagerSwiping(true);
                         mLastClickedVideo = -1;
-                        FFmpeg.cancel(mFFmpegMergeProcessId);
-                        Config.resetStatistics();
+                        if(mFFmpegMergeSession != null) { mFFmpegMergeSession.cancel(); }
+                        if(mFFmpegConvertSession != null) { mFFmpegConvertSession.cancel(); }
                         showPickupVideos(true);
                         showVideoView(false);
                     }
@@ -710,91 +678,33 @@ public class MergeFragment extends Fragment {
         });
     }
 
-    private int videoAvgFrameRate(MediaInformation mediaInformation) throws JSONException{
-        String  avgFrameRateString = mediaInformation.getAllProperties()
+    private int videoAvgFrameRate(MediaInformation mediaInformation) throws JSONException {
+        String avgFrameRateString = mediaInformation.getAllProperties()
                 .getJSONArray("streams")
                 .getJSONObject(0).getString("avg_frame_rate");
         String[] avgFrameRateArray = avgFrameRateString.split("/");
         return Integer.parseInt(avgFrameRateArray[0]) / Integer.parseInt(avgFrameRateArray[1]);
     }
 
-    private void mergeTest() throws JSONException{
-        File storageFile = new File(Environment.getExternalStorageDirectory(),
-                "FreeCut/merge/");
-        storageFile.mkdirs();
-
-        String mergedFileName;
-
-        int j = 1;
-
-        do {
-            mergedFileName = String.format(Locale.ENGLISH, "merge-%02d", j);
-            mergedFile = new File(storageFile, mergedFileName + ".mp4");
-            j++;
-        } while (mergedFile.isFile());
-
-        final String[] command = {
-                "-i", mListVideos.get(0).getVideoFile().getAbsolutePath(),
-                "-c:a", "aac", "-vcodec", "libx264", "-s",
-                "1280" + "X" + "720",
-                "-vf",
-                "scale=1280:960:force_original_aspect_ratio=decrease,pad=1280:960:-1:-1:color=black",
-                "-r","25",
-                mergedFile.getAbsolutePath(),
-        };
-
-        final String[] command2 = {
-                "-i", mListVideos.get(0).getVideoFile().getAbsolutePath(),
-                "-vf",
-                "scale=1280:960:force_original_aspect_ratio=decrease,pad=1280:960:-1:-1:color=black",
-                "-r","25",
-                mergedFile.getAbsolutePath(),
-        };
-        //540x960
-        //640x360
-        //1920X1080
-        //1280X720
-//                final String[] convert = {
-//                "-i", mListVideos.get(0).getVideoFile().getAbsolutePath(),
-//                "-c:a", "aac", "-vcodec", "libx264", "-s",
-//                "1280" + "X" + "720",
-//                "-r", "25", "-strict", "experimental",
-//                        mergedFile.getAbsolutePath(),
-//        };
-        final String[] convert = {
-                "-i", mListVideos.get(0).getVideoFile().getAbsolutePath(),
-                "-c:a", "aac", "-vcodec", "libx264", "-s",
-                "1280" + "X" + "720",
-                mergedFile.getAbsolutePath(),
-        };
-
-        Log.d(TAG, "Command Start");
-        FFmpeg.executeAsync(command, new ExecuteCallback() {
-            @Override
-            public void apply(long executionId, int returnCode) {
-                if (returnCode == RETURN_CODE_SUCCESS) {
-                    Log.d(TAG, "Command Success");
-                    mMergedVideosAdapter.removeFromList(VIDEOS_LIST_FIRST_POSITION,
-                            false);
-                    mMergedVideosAdapter.addToList(VIDEOS_LIST_FIRST_POSITION,
-                            new MergeVideoModel(mergedFile, mergedFile.getName(),
-                                    getVideoDuration(mergedFile), MergeVideoModel.Mode.PAUSE,
-                                    MERGED));
-                    FFmpeg.cancel(mFFmpegMergeProcessId);
-                } else {
-                    Log.d(TAG, "Command Failed");
-                    FFmpeg.cancel(mFFmpegMergeProcessId);
-                }
-            }
-        });
-    }
+    private int count = 0;
+    private int total = 0;
+    private int totalFrames;
 
     private void mergeVideos() throws JSONException {
         mListVideosForMergeProcess.clear();
         mListVideosForMergeProcess.addAll(mListVideos);
 
-        File storageFile = new File(Environment.getExternalStorageDirectory(),
-                "FreeCut/merge/");
+        File storageFile;
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            storageFile = new File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_MOVIES) +
+                    "/FreeEditor/merge/");
+        } else {
+            storageFile = new File(Environment.getExternalStorageDirectory(),
+                    "FreeEditor/merge/");
+        }
+
         storageFile.mkdirs();
 
         String mergedFileName;
@@ -807,8 +717,9 @@ public class MergeFragment extends Fragment {
             j++;
         } while (mergedFile.isFile());
 
-        MediaInformation infoOfFirstVideo =
-                FFprobe.getMediaInformation(mListVideos.get(0).getVideoFile().getAbsolutePath());
+        MediaInformationSession mediaInformationSession =
+                FFprobeKit.getMediaInformation(mListVideos.get(0).getVideoFile().getAbsolutePath());
+        MediaInformation infoOfFirstVideo = mediaInformationSession.getMediaInformation();
         int heightOfFirstVideo = Integer.parseInt(infoOfFirstVideo.getAllProperties()
                 .getJSONArray("streams")
                 .getJSONObject(0).getString("height"));
@@ -817,87 +728,59 @@ public class MergeFragment extends Fragment {
                 .getJSONObject(0).getString("width"));
         int fpsOfFirstVideo = videoAvgFrameRate(infoOfFirstVideo);
 
-        //boolean differentVideoQualities = false;
         MediaInformation videoInfo;
         int videoHeight;
         int videoWidth;
         int videoFps;
-        int totalFrames = 0;
-//        for (int i = 0; i < mListVideos.size() - 1; i++) {
-//            videoInfo = FFprobe.getMediaInformation(mListVideos
-//                    .get(i).getVideoFile().getAbsolutePath());
-//            videoHeight = Integer.parseInt(videoInfo.getAllProperties()
-//                    .getJSONArray("streams")
-//                    .getJSONObject(0).getString("height"));
-//            videoWidth = Integer.parseInt(videoInfo.getAllProperties()
-//                    .getJSONArray("streams")
-//                    .getJSONObject(0).getString("width"));
-//            videoFps = videoAvgFrameRate(videoInfo);
-//            totalFrames += getVideoSeconds(mListVideos.get(i).getVideoFile()) * videoFps;
-//            if (videoHeight != heightOfFirstVideo || videoFps != fpsOfFirstVideo ||
-//            videoWidth != widthOfFirstVideo) {
-//                Log.d(TAG, "differentVideoQualities");
-//                differentVideoQualities = true;
-//                break;
-//            }
-//        }
 
         int maximumVideoHeight = heightOfFirstVideo;
         int maximumVideoWidth = widthOfFirstVideo;
         int minimumFps = fpsOfFirstVideo;
 
-        //if (differentVideoQualities) {
-            for (int i = 0; i < mListVideos.size() - 1; i++) {
-                videoInfo = FFprobe.getMediaInformation(mListVideos
-                        .get(i).getVideoFile().getAbsolutePath());
-                videoHeight = Integer.parseInt(videoInfo.getAllProperties()
-                        .getJSONArray("streams")
-                        .getJSONObject(0).getString("height"));
-                videoWidth = Integer.parseInt(videoInfo.getAllProperties()
-                        .getJSONArray("streams")
-                        .getJSONObject(0).getString("width"));
-                videoFps = videoAvgFrameRate(videoInfo);
-                if (videoHeight > maximumVideoHeight) {
-                    maximumVideoHeight = videoHeight;
-                }
-                if (videoWidth > maximumVideoWidth) {
-                    maximumVideoWidth = videoWidth;
-                }
-                if (videoFps < minimumFps) {
-                    minimumFps = videoFps;
-                }
-                totalFrames = 0;
-            }
 
-            for (int i = 0; i < mListVideos.size() - 1; i++) {
-                totalFrames += getVideoSeconds(mListVideos.get(i).getVideoFile()) * minimumFps;
+        for (int i = 0; i < mListVideos.size() - 1; i++) {
+            MediaInformationSession mediaInformationSession2 = FFprobeKit.getMediaInformation(mListVideos
+                    .get(i).getVideoFile().getAbsolutePath());
+            videoInfo = mediaInformationSession.getMediaInformation();
+            videoHeight = Integer.parseInt(videoInfo.getAllProperties()
+                    .getJSONArray("streams")
+                    .getJSONObject(0).getString("height"));
+            videoWidth = Integer.parseInt(videoInfo.getAllProperties()
+                    .getJSONArray("streams")
+                    .getJSONObject(0).getString("width"));
+            videoFps = videoAvgFrameRate(videoInfo);
+            if (videoHeight > maximumVideoHeight) {
+                maximumVideoHeight = videoHeight;
             }
-
-            File convertedStorageFile = new File(Environment.getExternalStorageDirectory(),
-                    "FreeCut/merge/converted");
-            if (convertedStorageFile.exists()){
-                deleteFiles(convertedStorageFile);
+            if (videoWidth > maximumVideoWidth) {
+                maximumVideoWidth = videoWidth;
             }
-            enableAnalytics(totalFrames * 2);
-            convertedStorageFile.mkdirs();
-            if(maximumVideoHeight > 960){
-                maximumVideoHeight = 960;
+            if (videoFps < minimumFps) {
+                minimumFps = videoFps;
             }
-            convertVideo(0, maximumVideoHeight, maximumVideoWidth, minimumFps,
-                    convertedStorageFile);
-            //mergingVideos(null);
-//        }
-//        else {
-//            enableAnalytics(totalFrames);
-//            mergingVideos(null);
-//        }
-    }
+            totalFrames = 0;
+        }
 
-    private int count = 0;
-    private int total = 0;
+        for (int i = 0; i < mListVideos.size() - 1; i++) {
+            totalFrames += getVideoSeconds(mListVideos.get(i).getVideoFile()) * minimumFps;
+        }
 
-    private void enableAnalytics(int allFrames){
-        Log.d(TAG, "allFrames : " + allFrames);
+        File convertedStorageFile;
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            convertedStorageFile = new File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_MOVIES) +
+                    "/FreeEditor/merge/converted/");
+        } else {
+            convertedStorageFile = new File(Environment.getExternalStorageDirectory(),
+                    "FreeEditor/merge/converted/");
+        }
+
+        if (convertedStorageFile.exists()) {
+            deleteFiles(convertedStorageFile);
+        }
+
+        totalFrames = totalFrames * 2;
         total = 0;
         mMergedVideosAdapter.addToList(VIDEOS_LIST_FIRST_POSITION,
                 new MergeVideoModel(mergedFile, mergedFile.getName(),
@@ -909,48 +792,32 @@ public class MergeFragment extends Fragment {
                 mLastClickedVideo = mListVideos.indexOf(video);
             }
         }
+        convertedStorageFile.mkdirs();
+        if (maximumVideoHeight > 960) {
+            maximumVideoHeight = 960;
+        }
 
-        Config.enableStatisticsCallback(new StatisticsCallback() {
-            @Override
-            public void apply(Statistics statistics) {
-                if(statistics.getVideoFrameNumber() - count < 0){
-                    count = 0;
-                } else{
-                    total += (statistics.getVideoFrameNumber() - count);
-                }
-                count += (statistics.getVideoFrameNumber() - count);
+        if (minimumFps > 60) {
+            minimumFps = 60;
+        }
 
-                double progress =
-                        ((double) total / allFrames) * 100;
-
-                if (progress <= 100 && mListVideos.get(VIDEOS_LIST_FIRST_POSITION).
-                        getType() == MERGE_PROCESS) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (mRecyclerViewVideos.
-                                    findViewHolderForAdapterPosition(VIDEOS_LIST_FIRST_POSITION) != null)
-                                ((MergedVideosAdapter.MergeProcessViewHolder)
-                                        mRecyclerViewVideos.
-                                                findViewHolderForAdapterPosition(VIDEOS_LIST_FIRST_POSITION)).
-                                        updateProgress((int) progress);
-                        }
-                    });
-                }
-            }
-        });
+        convertVideo(0, maximumVideoHeight, maximumVideoWidth, minimumFps,
+                convertedStorageFile);
+        //mergingVideos(null);
     }
 
     private void mergingVideos(File convertedDirectory) {
-        ArrayList<String> listMergeCommands = new ArrayList<>();
+        String mergeCommand = "";
         String filter = "";
         for (int i = 0; i < mListVideosForMergeProcess.size() - 1; i++) {
-            filter += String.format(Locale.ENGLISH, "[%d:v] [%d:a] ", i, i);
-            listMergeCommands.add("-i");
-            listMergeCommands.add(mListVideosForMergeProcess
-                    .get(i).getVideoFile().getAbsolutePath());
-            MediaInformation info = FFprobe.getMediaInformation(
+            filter += String.format(Locale.ENGLISH, "[%d:v][%d:a]", i, i);
+            mergeCommand = mergeCommand.concat("-i '");
+            mergeCommand = mergeCommand.concat(mListVideosForMergeProcess
+                    .get(i).getVideoFile().getAbsolutePath() + "'");
+            mergeCommand = mergeCommand.concat(" ");
+            MediaInformationSession mediaInformationSession = FFprobeKit.getMediaInformation(
                     mListVideosForMergeProcess.get(i).getVideoFile().getAbsolutePath());
+            MediaInformation info = mediaInformationSession.getMediaInformation();
 
             try {
                 JSONArray array = info.getAllProperties().getJSONArray("streams");
@@ -971,17 +838,12 @@ public class MergeFragment extends Fragment {
 
         }
 
-        filter += String.format(Locale.ENGLISH, "concat=n=%d:v=1:a=1 [v] [a]",
+        filter += String.format(Locale.ENGLISH, "concat=n=%d:v=1:a=1[v][a]",
                 mListVideosForMergeProcess.size() - 1);
-        listMergeCommands.add("-filter_complex");
-        listMergeCommands.add(filter);
-        listMergeCommands.add("-map");
-        listMergeCommands.add("[v]");
-        listMergeCommands.add("-map");
-        listMergeCommands.add("[a]");
-        listMergeCommands.add(mergedFile.getAbsolutePath());
-
-        String[] mergeCommand = listMergeCommands.toArray(new String[listMergeCommands.size()]);
+        mergeCommand = mergeCommand.concat("-filter_complex ");
+        mergeCommand = mergeCommand.concat(filter);
+        mergeCommand = mergeCommand.concat(" -map [v] -map [a] '");
+        mergeCommand = mergeCommand.concat(mergedFile.getAbsolutePath() + "'");
 
         for (MergeVideoModel video : mListVideos) {
             if (video.getVideoMode() == MergeVideoModel.Mode.PLAY) {
@@ -989,28 +851,78 @@ public class MergeFragment extends Fragment {
             }
         }
 
-        Log.d(TAG, "Merge Start");
-        mFFmpegMergeProcessId = FFmpeg.executeAsync(mergeCommand, new ExecuteCallback() {
-            @Override
-            public void apply(long executionId, int returnCode) {
-                if (returnCode == RETURN_CODE_SUCCESS) {
-                    Log.d(TAG, "Merge Success");
-                    mMergedVideosAdapter.removeFromList(VIDEOS_LIST_FIRST_POSITION,
-                            false);
-                    mMergedVideosAdapter.addToList(VIDEOS_LIST_FIRST_POSITION,
-                            new MergeVideoModel(mergedFile, mergedFile.getName(),
-                                    getVideoDuration(mergedFile), MergeVideoModel.Mode.PAUSE,
-                                    MERGED));
-                    if (convertedDirectory != null){
-                        deleteFiles(convertedDirectory);
+        String command = "-i " + mListVideosForMergeProcess
+                .get(0).getVideoFile().getAbsolutePath() + " -i " +
+                mListVideosForMergeProcess
+                        .get(1).getVideoFile().getAbsolutePath() +
+                " -filter_complex [0:v][0:a][1:v][1:a]" +
+                "concat=n=2:v=1:a=1[v][a]" +
+                " -map [v] -map [a]" +
+                " " +
+                mergedFile.getAbsolutePath();
+
+        Log.d(TAG, "filter : " + command);
+        Log.d(TAG, "merge start");
+        mFFmpegMergeSession = FFmpegKit.executeAsync(mergeCommand,
+                new FFmpegSessionCompleteCallback() {
+                    @Override
+                    public void apply(FFmpegSession session) {
+                        if (ReturnCode.isSuccess(session.getReturnCode())) {
+                            Log.d(TAG, "merge success");
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mMergedVideosAdapter.removeFromList(VIDEOS_LIST_FIRST_POSITION,
+                                            false);
+                                    mMergedVideosAdapter.addToList(VIDEOS_LIST_FIRST_POSITION,
+                                            new MergeVideoModel(mergedFile, mergedFile.getName(),
+                                                    getVideoDuration(mergedFile), MergeVideoModel.Mode.PAUSE,
+                                                    MERGED));
+                                    if (convertedDirectory != null) {
+                                        deleteFiles(convertedDirectory);
+                                    }
+                                }
+                            });
+                        } else {
+                            Log.d(TAG, "merge failed");
+                        }
+                        if(mFFmpegMergeSession != null) { mFFmpegMergeSession.cancel(); }
+                        if(mFFmpegConvertSession != null) { mFFmpegConvertSession.cancel(); }
                     }
-                    FFmpeg.cancel(mFFmpegMergeProcessId);
-                } else {
-                    Log.d(TAG, "Merge Failed");
-                    FFmpeg.cancel(mFFmpegMergeProcessId);
-                }
-            }
-        });
+                }, new LogCallback() {
+                    @Override
+                    public void apply(com.arthenica.ffmpegkit.Log log) {
+                        Log.d(TAG, "merge : " + log.getMessage());
+                    }
+                }, new StatisticsCallback() {
+                    @Override
+                    public void apply(Statistics statistics) {
+                        if (statistics.getVideoFrameNumber() - count < 0) {
+                            count = 0;
+                        } else {
+                            total += (statistics.getVideoFrameNumber() - count);
+                        }
+                        count += (statistics.getVideoFrameNumber() - count);
+
+                        double progress =
+                                ((double) total / totalFrames) * 100;
+
+                        if (progress <= 100 && mListVideos.get(VIDEOS_LIST_FIRST_POSITION).
+                                getType() == MERGE_PROCESS) {
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (mRecyclerViewVideos.
+                                            findViewHolderForAdapterPosition(VIDEOS_LIST_FIRST_POSITION) != null)
+                                        ((MergedVideosAdapter.MergeProcessViewHolder)
+                                                mRecyclerViewVideos.
+                                                        findViewHolderForAdapterPosition(VIDEOS_LIST_FIRST_POSITION)).
+                                                updateProgress((int) progress);
+                                }
+                            });
+                        }
+                    }
+                });
     }
 
     private void convertVideo(int counter, int maxHeight, int maxWidth,
@@ -1025,23 +937,20 @@ public class MergeFragment extends Fragment {
         File convertedFile = new File(parent,
                 video.getName() + "-converted" + counter + ".mp4");
 
-        final String[] command = {
-                "-i", video.getAbsolutePath(),
-                "-c:a", "aac", "-vcodec", "libx264", "-s",
-                "1280" + "X" + "720",
-                "-vf",
-                "scale=1280:"+maxHeight+":force_original_aspect_ratio=decrease," +
-                        "pad=1280:"+maxHeight+":-1:-1:color=black",
-                "-r",String.valueOf(minFps),
-                convertedFile.getAbsolutePath(),
-        };
+        final String command =
+                "-i '" + video.getAbsolutePath() +
+                "' -c:a aac -vcodec libx264 -s 1280X720 -vf scale=1280:" + "720" +
+                        ":force_original_aspect_ratio=decrease," +
+                        "pad=1280:" + "720" + ":-1:-1:color=black -r " +
+                        minFps + " '" + convertedFile.getAbsolutePath() + "'";
 
-        FFmpeg.executeAsync(command, new ExecuteCallback() {
+        Log.d(TAG, "convert start");
+        mFFmpegConvertSession = FFmpegKit.executeAsync(command, new FFmpegSessionCompleteCallback() {
             @Override
-            public void apply(long executionId, int returnCode) {
+            public void apply(FFmpegSession session) {
                 Log.d(TAG, "convert start");
-                if (returnCode == RETURN_CODE_SUCCESS) {
-                    Log.d(TAG, "convert success");
+                if (ReturnCode.isSuccess(session.getReturnCode())) {
+                    Log.d(TAG, "convert succeed");
                     String fileName = mListVideosForMergeProcess.get(counter).getVideoName();
                     mListVideosForMergeProcess.remove(counter);
                     mListVideosForMergeProcess.add(counter, new MergeVideoModel(convertedFile,
@@ -1053,13 +962,46 @@ public class MergeFragment extends Fragment {
                     Log.d(TAG, "convert failed");
                 }
             }
+        }, new LogCallback() {
+            @Override
+            public void apply(com.arthenica.ffmpegkit.Log log) {
+                Log.d(TAG, "convert : " + log.getMessage());
+            }
+        }, new StatisticsCallback() {
+            @Override
+            public void apply(Statistics statistics) {
+                if (statistics.getVideoFrameNumber() - count < 0) {
+                    count = 0;
+                } else {
+                    total += (statistics.getVideoFrameNumber() - count);
+                }
+                count += (statistics.getVideoFrameNumber() - count);
+
+                double progress =
+                        ((double) total / totalFrames) * 100;
+
+                if (progress <= 100 && mListVideos.get(VIDEOS_LIST_FIRST_POSITION).
+                        getType() == MERGE_PROCESS) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mRecyclerViewVideos.
+                                    findViewHolderForAdapterPosition(VIDEOS_LIST_FIRST_POSITION) != null)
+                                ((MergedVideosAdapter.MergeProcessViewHolder)
+                                        mRecyclerViewVideos.
+                                                findViewHolderForAdapterPosition(VIDEOS_LIST_FIRST_POSITION)).
+                                        updateProgress((int) progress);
+                        }
+                    });
+                }
+            }
         });
     }
 
-    private boolean deleteFiles(File directory){
+    private boolean deleteFiles(File directory) {
         File[] includedFiles = directory.listFiles();
-        if(includedFiles != null){
-            for(int i = 0 ; i < includedFiles.length ; i++){
+        if (includedFiles != null) {
+            for (int i = 0; i < includedFiles.length; i++) {
                 includedFiles[i].delete();
             }
             directory.delete();

@@ -32,7 +32,6 @@ public class MainActivity extends AppCompatActivity {
     TextView mTitle;
     ImageView mIconDelete;
     TextView mDeleteAll;
-    //ImageView mBackHome;
     ImageView mBack;
     private ToolbarViewModel mToolbarViewModel;
 
@@ -75,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
         mTitle = findViewById(R.id.title);
         mIconDelete = findViewById(R.id.icon_delete);
         mDeleteAll = findViewById(R.id.delete);
-        //mBackHome = findViewById(R.id.home);
         mBack = findViewById(R.id.back);
 
         mToolbarViewModel = ViewModelProviders.of(this).get(ToolbarViewModel.class);
@@ -116,28 +114,6 @@ public class MainActivity extends AppCompatActivity {
                 mToolbarViewModel.deleteAllMergeVideos(true);
             }
         });
-//        mToolbarViewModel.backHomeButtonVisibility().observe(this, new Observer<Boolean>() {
-//            @Override
-//            public void onChanged(Boolean visible) {
-//                if (visible) {
-//                    mBackHome.setVisibility(View.VISIBLE);
-//                } else {
-//                    mBackHome.setVisibility(View.GONE);
-//                }
-//            }
-//        });
-//        mBackHome.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                new Handler().postDelayed(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        loadFragment(getSupportFragmentManager(), MainFragment.newInstance(null, null),
-//                                false);
-//                    }
-//                }, 0);
-//            }
-//        });
 
         mToolbarViewModel.backButtonVisibility().observe(this, new Observer<Boolean>() {
             @Override

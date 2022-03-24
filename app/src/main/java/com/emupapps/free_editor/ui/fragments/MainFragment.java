@@ -136,10 +136,6 @@ public class MainFragment extends Fragment {
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
                 switch (position){
-//                    case 0:
-//                        mBottomNavigationView.setSelectedItemId(R.id.navigation_my_list);
-//                        setMyListFragmentToolBar();
-//                        break;
                     case 0:
                         mBottomNavigationView.setSelectedItemId(R.id.navigation_about);
                         setAboutFragmentToolBar();
@@ -165,18 +161,11 @@ public class MainFragment extends Fragment {
 
     private void setMergeFragmentToolBar(){
         mToolbarViewModel.setToolbarTitle(getString(R.string.merge));
-        //mToolbarViewModel.showDeleteAll(true);
         mToolbarViewModel.showBackHomeButton(false);
     }
 
     private void setAboutFragmentToolBar(){
         mToolbarViewModel.setToolbarTitle(getString(R.string.about_app));
-        mToolbarViewModel.showDeleteAll(false);
-        mToolbarViewModel.showBackHomeButton(false);
-    }
-
-    private void setMyListFragmentToolBar(){
-        mToolbarViewModel.setToolbarTitle(getString(R.string.my_list));
         mToolbarViewModel.showDeleteAll(false);
         mToolbarViewModel.showBackHomeButton(false);
     }

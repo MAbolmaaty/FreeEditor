@@ -3,8 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/FreeEditor.iml" filepath="$PROJECT_DIR$/.idea/modules/FreeEditor.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/FFmpegAndroid/FreeEditor.FFmpegAndroid.iml" filepath="$PROJECT_DIR$/.idea/modules/FFmpegAndroid/FreeEditor.FFmpegAndroid.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ParseLoginUI/FreeEditor.ParseLoginUI.iml" filepath="$PROJECT_DIR$/.idea/modules/ParseLoginUI/FreeEditor.ParseLoginUI.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FreeEditor.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FreeEditor.app.iml" />
     </modules>
   </component>

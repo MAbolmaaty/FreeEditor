@@ -1,6 +1,5 @@
 package com.emupapps.free_editor.ui.fragments;
 
-import static com.arthenica.mobileffmpeg.Config.RETURN_CODE_SUCCESS;
 import static com.emupapps.free_editor.utils.Constants.MAIN_VIDEO;
 import static com.emupapps.free_editor.utils.Constants.SEGMENT_TIME;
 import static com.emupapps.free_editor.utils.Constants.STORAGE_DIRECTORY;
@@ -14,6 +13,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -31,14 +31,6 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.arthenica.mobileffmpeg.Config;
-import com.arthenica.mobileffmpeg.ExecuteCallback;
-import com.arthenica.mobileffmpeg.FFmpeg;
-import com.arthenica.mobileffmpeg.FFprobe;
-import com.arthenica.mobileffmpeg.MediaInformation;
-import com.arthenica.mobileffmpeg.Statistics;
-import com.arthenica.mobileffmpeg.StatisticsCallback;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,6 +40,17 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
 
+import com.arthenica.ffmpegkit.FFmpegKit;
+import com.arthenica.ffmpegkit.FFmpegKitConfig;
+import com.arthenica.ffmpegkit.FFmpegSession;
+import com.arthenica.ffmpegkit.FFmpegSessionCompleteCallback;
+import com.arthenica.ffmpegkit.FFprobeKit;
+import com.arthenica.ffmpegkit.LogCallback;
+import com.arthenica.ffmpegkit.MediaInformation;
+import com.arthenica.ffmpegkit.MediaInformationSession;
+import com.arthenica.ffmpegkit.ReturnCode;
+import com.arthenica.ffmpegkit.Statistics;
+import com.arthenica.ffmpegkit.StatisticsCallback;
 import com.emupapps.free_editor.Data.TrimVideoModel;
 import com.emupapps.free_editor.R;
 import com.emupapps.free_editor.adapters.TrimmedVideosAdapter;
@@ -84,7 +87,7 @@ public class TrimProcessFragment extends Fragment {
     private boolean mBlockSeekBar = true;
     private boolean mVideoMuted = false;
     private MediaPlayer mMediaPlayer;
-    private long mFFmpegTrimProcessId;
+    private FFmpegSession mFFmpegTrimSession;
     private int mLastClickedVideo;
     private TrimVideoModel[] mTrimVideoModels;
     private boolean mPaused;
@@ -243,7 +246,9 @@ public class TrimProcessFragment extends Fragment {
                                 getVideoTime(videoDuration)));
 
                         // Calculate video fps
-                        MediaInformation info = FFprobe.getMediaInformation(bundle.getString(VIDEO_PATH));
+                        MediaInformationSession mediaInformationSession
+                                = FFprobeKit.getMediaInformation(bundle.getString(VIDEO_PATH));
+                        MediaInformation info = mediaInformationSession.getMediaInformation();
                         try {
                             JSONArray array = info.getAllProperties().getJSONArray("streams");
                             JSONObject object = array.getJSONObject(0);
@@ -352,7 +357,9 @@ public class TrimProcessFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
-        FFmpeg.cancel(mFFmpegTrimProcessId);
+        if(mFFmpegTrimSession != null) {
+            mFFmpegTrimSession.cancel();
+        }
         super.onDestroyView();
     }
 
@@ -383,33 +390,50 @@ public class TrimProcessFragment extends Fragment {
 
         String path = file.getAbsolutePath();
 
-        final String[] trim = {
-                "-ss", String.valueOf(start),
-                "-i", videoPath,
-                "-t", String.valueOf(segmentTime),
-                "-c:v", "libx264",
-                "-crf", "23",
-                path};
+        Log.d(TAG, "videoPath : " + videoPath);
+
+        final String trim =
+                "-ss " + start +
+                " -i '" + videoPath +
+                "' -t " + segmentTime +
+                " -c:v libx264 -crf 23 '" + path + "'";
 
         mTrimVideoModels[counter - 1].setTrimmingStatus(getString(R.string.trimming));
-        mTrimmedVideosAdapter.notifyItemChanged(counter - 1);
-
-        mFFmpegTrimProcessId = FFmpeg.executeAsync(trim, new ExecuteCallback() {
+        getActivity().runOnUiThread(new Runnable() {
             @Override
-            public void apply(long executionId, int returnCode) {
-                if (returnCode == RETURN_CODE_SUCCESS) {
-                    mTrimVideoModels[counter - 1].setVideoFile(file);
-                    mTrimVideoModels[counter - 1].setProgress(100);
-                    mTrimVideoModels[counter - 1].setVideoDuration(getVideoDuration(file));
-                    mTrimmedVideosAdapter.notifyItemChanged(counter - 1);
-                    trim(storageDirectory, videoPath,
-                            segmentTime, videoDuration, start + segmentTime,
-                            counter + 1);
-                }
+            public void run() {
+                mTrimmedVideosAdapter.notifyItemChanged(counter - 1);
             }
         });
 
-        Config.enableStatisticsCallback(new StatisticsCallback() {
+        Log.d(TAG, "trim started");
+        mFFmpegTrimSession = FFmpegKit.executeAsync(trim, new FFmpegSessionCompleteCallback() {
+            @Override
+            public void apply(FFmpegSession session) {
+                if (ReturnCode.isSuccess(session.getReturnCode())) {
+                    Log.d(TAG, "trim succeed");
+                    mTrimVideoModels[counter - 1].setVideoFile(file);
+                    mTrimVideoModels[counter - 1].setProgress(100);
+                    mTrimVideoModels[counter - 1].setVideoDuration(getVideoDuration(file));
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mTrimmedVideosAdapter.notifyItemChanged(counter - 1);
+                        }
+                    });
+                    trim(storageDirectory, videoPath,
+                            segmentTime, videoDuration, start + segmentTime,
+                            counter + 1);
+                } else {
+                    Log.d(TAG, "trim failed");
+                }
+            }
+        }, new LogCallback() {
+            @Override
+            public void apply(com.arthenica.ffmpegkit.Log log) {
+                Log.d(TAG, "Message : " + log.getMessage());
+            }
+        }, new StatisticsCallback() {
             @Override
             public void apply(Statistics statistics) {
                 double progress =

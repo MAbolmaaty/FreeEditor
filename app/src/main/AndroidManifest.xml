@@ -3,13 +3,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.emupapps.free_editor">
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:name="com.emupapps.free_editor.helper.FreeCutApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_free_cut"
         android:roundIcon="@mipmap/ic_launcher_free_cut"
@@ -17,13 +16,12 @@
         android:supportsRtl="false"
         android:largeHeap="true"
         android:theme="@style/AppTheme"
-        tools:replace="android:supportsRtl"
-        android:requestLegacyExternalStorage="true">
+        tools:replace="android:supportsRtl">
 
         <activity android:name="com.emupapps.free_editor.ui.activities.MainActivity"
             android:screenOrientation="portrait"
             android:theme="@style/SplashTheme"
-            >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <action android:name="android.intent.action.VIEW" />

@@ -15,7 +15,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -45,32 +44,17 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
-import com.bumptech.glide.Glide;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.MobileAds;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.util.Locale;
-
-import com.emupapps.free_editor.Data.TinyDB;
+import com.arthenica.ffmpegkit.FFmpegKitConfig;
 import com.emupapps.free_editor.Data.Utils;
 import com.emupapps.free_editor.R;
 import com.emupapps.free_editor.view_models.MainViewPagerSwipingViewModel;
 import com.emupapps.free_editor.view_models.ToolbarViewModel;
 import com.emupapps.free_editor.view_models.TrimViewModel;
+
+import java.io.File;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.util.Locale;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -88,12 +72,7 @@ public class TrimFragment extends Fragment {
 
     Uri mSelectedVideoUri;
 
-    TinyDB tinydb;
-    String mylink = "https://www.google.com/";
-
-    ImageView mBanner;
     private static final int REQUEST_TAKE_GALLERY_VIDEO = 100;
-    String saldo = "";
 
     private TrimViewModel mTrimViewModel;
     private Toast mToast;
@@ -184,7 +163,6 @@ public class TrimFragment extends Fragment {
                 .get(MainViewPagerSwipingViewModel.class);
 
         mConstraintLayout = view.findViewById(R.id.constraintLayout);
-        mBanner = view.findViewById(R.id.banner);
         mIcVideo = view.findViewById(R.id.icVideo);
         mOpenGallery = view.findViewById(R.id.openGallery);
         mPickUpTrim = view.findViewById(R.id.pickUpTrim);
@@ -202,26 +180,6 @@ public class TrimFragment extends Fragment {
         mNumberOfSeconds = view.findViewById(R.id.numberOfSeconds);
         mTrim = view.findViewById(R.id.trim);
         mSpeedTrim = view.findViewById(R.id.speedTrim);
-
-        mBanner.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String url = mylink;
-                Intent i = new Intent(Intent.ACTION_VIEW);
-                i.setData(Uri.parse(url));
-                startActivity(i);
-            }
-        });
-
-        MobileAds.initialize(getActivity(), "ca-app-pub-6503532425142366~2924525320");
-        AdView adView = view.findViewById(R.id.adView);
-        AdRequest adRequest = new AdRequest.Builder().build();
-        //adView.loadAd(adRequest);
-
-        // Initialize SharedPreference
-        tinydb = new TinyDB(getActivity());
-
-        //new GetDataSync().execute();
 
         mSelectedVideoUri = null;
 
@@ -385,85 +343,17 @@ public class TrimFragment extends Fragment {
         super.onPause();
     }
 
-    public String createDirectory(String name, String seconds) {
-        int num = 1;
-        if (new File(Environment.getExternalStorageDirectory(),
-                "FreeCut/FreeCut" + "-" + name + "-" + seconds + "-" + num).exists()) {
-            num++;
-        }
-
-        File mediaStorageDir3 = new File(Environment.getExternalStorageDirectory(),
-                "FreeCut/FreeCut" + "-" + name + "-" + seconds + "-" + num);
-
-
-        if (!mediaStorageDir3.exists()) {
-            if (!mediaStorageDir3.mkdirs()) {
-                Log.d("App", "failed to create directory");
-            }
-
-        }
-        return mediaStorageDir3.getAbsolutePath();
-
-    }
-
-    public class GetDataSync extends AsyncTask<Void, Void, Void> {
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                getData();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-
-            String imgURL = "http://forcetouches.com/freecutAdmin/images/" + saldo;
-            Glide.with(getActivity()).load(imgURL).into(mBanner);
-        }
-
-    }
-
-    private void getData() throws IOException, JSONException {
-        JSONObject json = readJsonFromUrl("http://www.forcetouches.com/freecutAdmin/getandroidbanners.php");
-        try {
-            String response = json.getString("banner");
-            mylink = json.getString("url");
-            saldo = response;
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String readAll(Reader rd) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        int cp;
-        while ((cp = rd.read()) != -1) {
-            sb.append((char) cp);
-        }
-        return sb.toString();
-    }
-
-    public JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
-        InputStream is = new URL(url).openStream();
-        try {
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = readAll(rd);
-            JSONObject json = new JSONObject(jsonText);
-            return json;
-        } finally {
-            is.close();
-        }
-    }
-
     private String createStorageDirectory(String name, String process, String seconds) {
-        File file = new File(Environment.getExternalStorageDirectory(),
-                "FreeCut/" + name + "/" + process + "/" + "secs-" + seconds + "/");
+        File file;
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            file = new File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_MOVIES) +
+                    "/FreeEditor/" + name + "/" + process + "/" + "secs-" + seconds + "/");
+        } else {
+            file = new File(Environment.getExternalStorageDirectory() +
+                    "/FreeEditor/" + name + "/" + process + "/" + "secs-" + seconds + "/");
+        }
 
         if (file.exists()) {
             for (File video : file.listFiles()) {
@@ -471,8 +361,8 @@ public class TrimFragment extends Fragment {
             }
         }
 
-        file.mkdirs();
-
+        boolean created = file.mkdirs();
+        Log.d(TAG, "created : " + created);
         return file.getAbsolutePath();
     }
 

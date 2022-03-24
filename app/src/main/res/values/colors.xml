@@ -6,12 +6,10 @@
     <color name="colorAccent2">#0188FE</color>
     <color name="black1">#60000000</color>
     <color name="black3">#00000000</color>
-    <color name="button">#eca820</color>
     <color name="white">#ffffff</color>
     <color name="app_background">#263346</color>
     <color name="view_color">#cccccc</color>
-    <color name="orange">#eca820</color>
     <color name="grey">#606060</color>
     <color name="lightGrey">#808080</color>
-    <color name="darkBlue">#263346</color>
+
 </resources>
