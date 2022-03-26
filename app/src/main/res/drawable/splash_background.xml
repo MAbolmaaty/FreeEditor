@@ -8,12 +8,6 @@
     <item android:drawable="@drawable/ic_free_editor"
         android:gravity="center"/>
 
-<!--    <item>-->
-<!--        <bitmap-->
-<!--            android:gravity="center"-->
-<!--            android:src="@mipmap/ic_launcher_free_cut" />-->
-<!--    </item>-->
-
     <item android:drawable="@drawable/ic_emupapps"
         android:gravity="bottom|center"/>
 

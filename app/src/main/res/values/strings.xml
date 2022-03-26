@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Free Editor</string>
+    <string name="app_name">FreeEditor</string>
     <string-array name="video">
         <item>webm</item>
         <item>mkv</item>
